@@ -562,21 +562,20 @@ with tab_ml:
                 'Completion_Rate': 'mean',
                 'Cohort_Survival_Rate': 'mean',
             }).reset_index()
-            
+
             # Scale features
             features = ['Participation_Rate', 'Completion_Rate', 'Cohort_Survival_Rate']
-            
+            X_scaled = StandardScaler().fit_transform(regional_profile[features])
+
             try:
-                regional_profile['Cluster'] = kmeans_model.predict(
-                    kmeans_scaler.transform(regional_profile[features])
-                ).astype(str)
+                regional_profile['Cluster'] = kmeans_model.predict(X_scaled).astype(str)
                 
                 # Define cluster profiles
                 cluster_names = {
                     '0': 'Passers with Low Enrollees',
                     '1': '📈 Growing Regions',
-                    '3': '🌟 High Performers',
-                    '2': '⚠️ Emerging Markets'
+                    '2': '⚠️ Emerging Markets',
+                    '3': '🌟 High Performers'
                 }
                 
                 cluster_colors = {
@@ -810,9 +809,10 @@ with tab_ml:
                     'Cohort_Survival_Rate': 'mean',
                 }).reset_index()
                 
+                X_scaled = StandardScaler().fit_transform(regional_profile[features])
+
                 features = ['Participation_Rate', 'Completion_Rate', 'Cohort_Survival_Rate']
-                regional_profile['Cluster'] = kmeans_model.predict(
-                    kmeans_scaler(regional_profile[features])).astype(str)
+                regional_profile['Cluster'] = kmeans_model.predict(X_scaled).astype(str).astype(str)
                 
                 print(regional_profile['Cluster'])
 
