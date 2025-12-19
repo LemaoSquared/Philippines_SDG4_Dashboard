@@ -3,3 +3,4 @@ pandas
 plotly
 folium
 streamlit-folium
+typing-extensions
