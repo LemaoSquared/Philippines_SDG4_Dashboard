@@ -10,28 +10,25 @@ class ModelHandler():
 
     def __init__(self):
         df = pd.read_csv('data_wrangling\\Cleaned_Philippines_Education_Statistics.csv')
-
-        # 2. Preprocess: Group by Region to get a "Profile"
-        # We filter out 0 values (like old Senior High data) to get accurate averages
         df_filtered = df[df['Cohort_Survival_Rate'] > 0]
-
         self.regional_profile = df_filtered.groupby('Geolocation').agg({
             'Participation_Rate': 'mean',
             'Completion_Rate': 'mean',
             'Cohort_Survival_Rate': 'mean',
         }).reset_index()
 
-        # 3. Select Features & Scale
-        # Scaling is CRITICAL because GPI is around 1.0 while Survival is around 80.0
-        features = ['Participation_Rate', 'Completion_Rate', 'Cohort_Survival_Rate']
-        X = self.regional_profile[features]
-
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
-
+        self.cluster_scaler = joblib.load('import_models\\scaler.pkl') 
         self.loaded_kmeans = joblib.load('import_models\\kmeans_model.pkl')
-        self.regional_profile['clusters'] = self.loaded_kmeans.fit_predict(X_scaled)
+        self.regional_profile['clusters'] = self.loaded_kmeans.fit_predict(
+            self.cluster_scaler.transform(
+                self.regional_profile[['Participation_Rate', 'Completion_Rate', 'Cohort_Survival_Rate']]
+            )
+        )
     
     def get_clusters(self):
+        """ 
+        A method that returns a dataframe containing the clusters for each region.
+
+        """
         # 1. Load data
         return self.regional_profile

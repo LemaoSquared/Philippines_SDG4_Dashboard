@@ -111,8 +111,9 @@ features = ['Participation_Rate', 'Completion_Rate', 'Cohort_Survival_Rate']
 X = regional_profile[features]
 
 kmeans = KMeans(n_clusters=4, random_state=77, n_init=10, verbose=0)
-joblib.dump(kmeans, 'import_models//kmeans_model.pkl') # Saves the model
 regional_profile['Cluster'] = kmeans.fit_predict(X_scaled)
+joblib.dump(kmeans, 'import_models//kmeans_model.pkl') # Saves the model
+joblib.dump(scaler, 'import_models//scaler.pkl') # Saves the model
 # print(regional_profile.groupby('Cluster')[features].mean())
 
 # 6. Visualize the results
