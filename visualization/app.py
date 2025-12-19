@@ -162,13 +162,21 @@ def load_assets():
 # --- LOAD ML MODELS ---
 @st.cache_resource
 def load_kmeans_model():
-    model_path = 'import_models/kmeans_model.pkl'
+    model_path = 'import_models//kmeans_model.pkl'
+    if os.path.exists(model_path):
+        return joblib.load(model_path)
+    return None
+
+@st.cache_resource
+def load_kmeans_scaler():
+    model_path = 'import_models//scaler.pkl'
     if os.path.exists(model_path):
         return joblib.load(model_path)
     return None
 
 df_all, ph_geojson = load_assets()
 kmeans_model = load_kmeans_model()
+kmeans_scaler = load_kmeans_scaler()
 
 # --- HELPER FUNCTIONS ---
 def draw_enhanced_kpi(label, value, subtitle, color="#3b82f6"):
@@ -549,14 +557,10 @@ with tab_ml:
 
         # Scale Features
         features = ['Participation_Rate', 'Completion_Rate', 'Cohort_Survival_Rate']
-        X = regional_profile[features]
-        
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
 
         # Apply Model
         try:
-            regional_profile['clusters'] = kmeans_model.fit_predict(X_scaled)
+            regional_profile['clusters'] = kmeans_model.predict(kmeans_scaler(regional_profile[features]))
             regional_profile['clusters'] = regional_profile['clusters'].astype(str) # Convert to string for discrete color scaling
 
             # Visualization
