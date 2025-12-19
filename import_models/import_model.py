@@ -8,10 +8,10 @@ import joblib
 
 class ModelHandler():
 
-    def __init__():
+    def __init__(self):
         pass
     
-    def get_clusters():
+    def get_clusters(self):
         # 1. Load data
         df = pd.read_csv('data_wrangling\\Cleaned_Philippines_Education_Statistics.csv')
 
@@ -33,6 +33,6 @@ class ModelHandler():
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
 
-        loaded_kmeans = joblib.load('kmeans_model.pkl')
-        regional_profile['clusters'] = loaded_kmeans.predict(X_scaled)
+        loaded_kmeans = joblib.load('import_models\\kmeans_model.pkl')
+        regional_profile['clusters'] = loaded_kmeans.fit_predict(X_scaled)
         return regional_profile

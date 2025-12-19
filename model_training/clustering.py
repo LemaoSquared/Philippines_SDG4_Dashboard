@@ -88,7 +88,28 @@ plt.ylabel('CH Score')
 plt.show()
 
 # 5. Interpret the Clusters
+
+# You can also run this code dave if complex ang sa import model shinanneganz
+
+
 print("--- Cluster Averages ---")
+df = pd.read_csv('data_wrangling\\Cleaned_Philippines_Education_Statistics.csv')
+
+# 2. Preprocess: Group by Region to get a "Profile"
+# We filter out 0 values (like old Senior High data) to get accurate averages
+df_filtered = df[df['Cohort_Survival_Rate'] > 0]
+
+regional_profile = df_filtered.groupby('Geolocation').agg({
+    'Participation_Rate': 'mean',
+    'Completion_Rate': 'mean',
+    'Cohort_Survival_Rate': 'mean',
+}).reset_index()
+
+# 3. Select Features & Scale
+# Scaling is CRITICAL because GPI is around 1.0 while Survival is around 80.0
+features = ['Participation_Rate', 'Completion_Rate', 'Cohort_Survival_Rate']
+X = regional_profile[features]
+
 kmeans = KMeans(n_clusters=4, random_state=77, n_init=10, verbose=0)
 joblib.dump(kmeans, 'import_models//kmeans_model.pkl') # Saves the model
 regional_profile['Cluster'] = kmeans.fit_predict(X_scaled)
