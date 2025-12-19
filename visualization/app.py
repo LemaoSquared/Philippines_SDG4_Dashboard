@@ -575,9 +575,9 @@ with tab_ml:
                 
                 # Define cluster profiles
                 cluster_names = {
-                    '0': '🌟 High Performers',
-                    '1': '📈 Growing Regions',
-                    '2': '⚠️ Emerging Markets'
+                    '0': 'High Performers',
+                    '1': 'Growing Regions',
+                    '2': 'Emerging Markets'
                 }
                 
                 cluster_colors = {
@@ -611,9 +611,9 @@ with tab_ml:
                         },
                         template="plotly_white",
                         color_discrete_map={
-                            '🌟 High Performers': '#10b981',
-                            '📈 Growing Regions': '#f59e0b',
-                            '⚠️ Emerging Markets': '#ef4444'
+                            'High Performers': '#10b981',
+                            'Growing Regions': '#f59e0b',
+                            'Emerging Markets': '#ef4444'
                         },
                         size_max=50
                     )
@@ -633,9 +633,9 @@ with tab_ml:
                         values=cluster_counts.values,
                         names=cluster_counts.index,
                         color_discrete_map={
-                            '🌟 High Performers': '#10b981',
-                            '📈 Growing Regions': '#f59e0b',
-                            '⚠️ Emerging Markets': '#ef4444'
+                            'High Performers': '#10b981',
+                            'Growing Regions': '#f59e0b',
+                            'Emerging Markets': '#ef4444'
                         },
                         template='plotly_white'
                     )
@@ -654,9 +654,9 @@ with tab_ml:
                     color="Cluster_Name",
                     hover_name="Geolocation",
                     color_discrete_map={
-                        '🌟 High Performers': '#10b981',
-                        '📈 Growing Regions': '#f59e0b',
-                        '⚠️ Emerging Markets': '#ef4444'
+                        'High Performers': '#10b981',
+                        'Growing Regions': '#f59e0b',
+                        'Emerging Markets': '#ef4444'
                     },
                     template="plotly_white",
                     size_max=50
@@ -721,13 +721,17 @@ with tab_ml:
                         elif cluster_id == '1':
                             st.info("""
                             📈 Strong momentum - These regions show good performance
+                            
                             📈 Sustain growth trajectory with targeted interventions
+                            
                             📈 Monitor closely for factors enabling success
                             """)
                         else:
                             st.warning("""
                             ⚠️ Priority support needed - These regions require focused attention
+                            
                             ⚠️ Implement evidence-based improvement programs
+                            
                             ⚠️ Increase resource allocation and monitoring
                             """)
                 
