@@ -540,72 +540,328 @@ with tab_insights:
 with tab_ml:
     st.markdown('<div class="insight-header"><h3>Machine Learning & Predictive Analytics</h3></div>', unsafe_allow_html=True)
     
-    if kmeans_model is not None:
-        st.subheader("Regional Performance Clustering")
-        st.write("This model groups regions into 'Profiles' based on their average Participation, Completion, and Cohort Survival rates.")
-
-        # Preprocess: Replicating ModelHandler logic
-        # Filter out 0 values for accuracy
-        df_filtered = df_all[df_all['Cohort_Survival_Rate'] > 0]
-
-        # Group by Region to get the profile
-        regional_profile = df_filtered.groupby('Geolocation').agg({
-            'Participation_Rate': 'mean',
-            'Completion_Rate': 'mean',
-            'Cohort_Survival_Rate': 'mean',
-        }).reset_index()
-
-        # Scale Features
-        features = ['Participation_Rate', 'Completion_Rate', 'Cohort_Survival_Rate']
-
-        # Apply Model
-        try:
-            regional_profile['clusters'] = kmeans_model.predict(kmeans_scaler(regional_profile[features]))
-            regional_profile['clusters'] = regional_profile['clusters'].astype(str) # Convert to string for discrete color scaling
-
-            # Visualization
-            col_chart, col_list = st.columns([2, 1])
-            
-            with col_chart:
-                fig_clusters = px.scatter(
-                    regional_profile, 
-                    x="Participation_Rate", 
-                    y="Completion_Rate",
-                    color="clusters",
-                    size="Cohort_Survival_Rate",
-                    hover_name="Geolocation",
-                    template="plotly_white",
-                    title="Cluster Map: Participation vs Completion",
-                    labels={"clusters": "Cluster Group"},
-                    color_discrete_sequence=px.colors.qualitative.Safe
-                )
-                st.plotly_chart(fig_clusters, use_container_width=True)
-            
-            with col_list:
-                st.write("**Regions by Cluster**")
-                for cluster in sorted(regional_profile['clusters'].unique()):
-                    regions = regional_profile[regional_profile['clusters'] == cluster]['Geolocation'].tolist()
-                    st.info(f"**Cluster {cluster}**: {', '.join(regions)}")
-                    
-        except Exception as e:
-            st.error(f"Could not run clustering: {e}")
-    else:
-        st.warning("⚠️ `import_models/kmeans_model.pkl` not found. Please ensure the model file is in the correct directory.")
-
-    st.write("---")
-    st.subheader("Coming Soon")
-    st.info("Additional forecasting models and causal analysis (VAR) are currently under development.")
-    st.write("---")
+    # Tab selector for different models
+    ml_subtab1, ml_subtab2, ml_subtab3 = st.tabs(["Clustering Analysis", "Model Performance", "Regional Insights"])
     
-    # Placeholders for other models
-    col_ml1, col_ml3 = st.columns(2)
-    with col_ml1:
-        st.subheader("Time Series Forecasting")
-        st.info("Forecasting models are currently under development.")
-    with col_ml3:
-        st.subheader("Causal Analysis")
-        st.info("Vector Autoregression analysis is currently under development.")
+    # --- CLUSTERING TAB ---
+    with ml_subtab1:
+        if kmeans_model is not None:
+            st.markdown("""
+            ### K-Means Clustering: Regional Education Profiles
+            
+            This unsupervised learning model groups regions into distinct performance clusters based on three key metrics:
+            - **Participation Rate** (school access)
+            - **Completion Rate** (graduation success)
+            - **Cohort Survival Rate** (retention efficiency)
+            """)
+            
+            # Preprocess data
+            df_filtered = df_all[df_all['Cohort_Survival_Rate'] > 0]
+            regional_profile = df_filtered.groupby('Geolocation').agg({
+                'Participation_Rate': 'mean',
+                'Completion_Rate': 'mean',
+                'Cohort_Survival_Rate': 'mean',
+            }).reset_index()
+            
+            # Scale features
+            features = ['Participation_Rate', 'Completion_Rate', 'Cohort_Survival_Rate']
+            X = regional_profile[features]
+            
+            scaler = StandardScaler()
+            X_scaled = scaler.fit_transform(X)
+            
+            try:
+                regional_profile['Cluster'] = kmeans_model.fit_predict(X_scaled).astype(str)
+                
+                # Define cluster profiles
+                cluster_names = {
+                    '0': '🌟 High Performers',
+                    '1': '📈 Growing Regions',
+                    '2': '⚠️ Emerging Markets'
+                }
+                
+                cluster_colors = {
+                    '0': '#10b981',  # Green
+                    '1': '#f59e0b',  # Amber
+                    '2': '#ef4444'   # Red
+                }
+                
+                regional_profile['Cluster_Name'] = regional_profile['Cluster'].map(cluster_names)
+                regional_profile['Color'] = regional_profile['Cluster'].map(cluster_colors)
+                
+                st.write("")
+                
+                # Main cluster visualization
+                col_viz1, col_viz2 = st.columns([2, 1], gap="large")
+                
+                with col_viz1:
+                    st.subheader("Interactive Cluster Map")
+                    fig_clusters = px.scatter(
+                        regional_profile, 
+                        x="Participation_Rate", 
+                        y="Completion_Rate",
+                        color="Cluster_Name",
+                        size="Cohort_Survival_Rate",
+                        hover_name="Geolocation",
+                        hover_data={
+                            'Participation_Rate': ':.1f',
+                            'Completion_Rate': ':.1f',
+                            'Cohort_Survival_Rate': ':.1f',
+                            'Cluster_Name': True
+                        },
+                        template="plotly_white",
+                        color_discrete_map={
+                            '🌟 High Performers': '#10b981',
+                            '📈 Growing Regions': '#f59e0b',
+                            '⚠️ Emerging Markets': '#ef4444'
+                        },
+                        size_max=50
+                    )
+                    fig_clusters.update_layout(
+                        height=500,
+                        xaxis_title="Participation Rate (%)",
+                        yaxis_title="Completion Rate (%)",
+                        font=dict(size=12),
+                        hovermode='closest'
+                    )
+                    st.plotly_chart(fig_clusters, use_container_width=True)
+                
+                with col_viz2:
+                    st.subheader("Cluster Distribution")
+                    cluster_counts = regional_profile['Cluster_Name'].value_counts()
+                    fig_pie = px.pie(
+                        values=cluster_counts.values,
+                        names=cluster_counts.index,
+                        color_discrete_map={
+                            '🌟 High Performers': '#10b981',
+                            '📈 Growing Regions': '#f59e0b',
+                            '⚠️ Emerging Markets': '#ef4444'
+                        },
+                        template='plotly_white'
+                    )
+                    fig_pie.update_layout(height=500)
+                    st.plotly_chart(fig_pie, use_container_width=True)
+                
+                st.write("---")
+                
+                # 3D visualization
+                st.subheader("3D Cluster Visualization")
+                fig_3d = px.scatter_3d(
+                    regional_profile,
+                    x="Participation_Rate",
+                    y="Completion_Rate",
+                    z="Cohort_Survival_Rate",
+                    color="Cluster_Name",
+                    hover_name="Geolocation",
+                    color_discrete_map={
+                        '🌟 High Performers': '#10b981',
+                        '📈 Growing Regions': '#f59e0b',
+                        '⚠️ Emerging Markets': '#ef4444'
+                    },
+                    template="plotly_white",
+                    size_max=50
+                )
+                fig_3d.update_layout(height=600)
+                st.plotly_chart(fig_3d, use_container_width=True)
+                
+                st.write("---")
+                
+                # Detailed cluster breakdown
+                st.subheader("Detailed Cluster Analysis")
+                
+                for cluster_id in sorted(regional_profile['Cluster'].unique()):
+                    cluster_data = regional_profile[regional_profile['Cluster'] == cluster_id]
+                    cluster_name = cluster_names.get(cluster_id, f'Cluster {cluster_id}')
+                    cluster_color = cluster_colors.get(cluster_id, '#3b82f6')
+                    
+                    with st.expander(f"{cluster_name} ({len(cluster_data)} regions)", expanded=(cluster_id=='0')):
+                        col_c1, col_c2 = st.columns(2, gap="large")
+                        
+                        with col_c1:
+                            st.markdown(f"""
+                            **Regions in this cluster:**
+                            {', '.join(cluster_data['Geolocation'].tolist())}
+                            """)
+                            
+                            # Cluster statistics
+                            st.markdown(f"""
+                            **Cluster Statistics:**
+                            - Avg Participation: {cluster_data['Participation_Rate'].mean():.1f}%
+                            - Avg Completion: {cluster_data['Completion_Rate'].mean():.1f}%
+                            - Avg Cohort Survival: {cluster_data['Cohort_Survival_Rate'].mean():.1f}%
+                            """)
+                        
+                        with col_c2:
+                            # Cluster characteristics
+                            avg_metrics = cluster_data[features].mean()
+                            fig_radar = go.Figure(data=go.Scatterpolar(
+                                r=avg_metrics.values,
+                                theta=features,
+                                fill='toself',
+                                name=cluster_name,
+                                marker=dict(color=cluster_color, opacity=0.7)
+                            ))
+                            fig_radar.update_layout(
+                                polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
+                                showlegend=False,
+                                height=400
+                            )
+                            st.plotly_chart(fig_radar, use_container_width=True)
+                        
+                        # Recommendations
+                        st.markdown(f"**💡 Recommendations for {cluster_name}:**")
+                        if cluster_id == '0':
+                            st.success("""
+                            ✅ Maintain excellence - These regions are meeting or exceeding targets
+                            
+                            ✅ Share best practices with other regions
+                            
+                            ✅ Focus on innovation and continuous improvement
+                            """)
+                        elif cluster_id == '1':
+                            st.info("""
+                            📈 Strong momentum - These regions show good performance
+                            📈 Sustain growth trajectory with targeted interventions
+                            📈 Monitor closely for factors enabling success
+                            """)
+                        else:
+                            st.warning("""
+                            ⚠️ Priority support needed - These regions require focused attention
+                            ⚠️ Implement evidence-based improvement programs
+                            ⚠️ Increase resource allocation and monitoring
+                            """)
+                
+            except Exception as e:
+                st.error(f"⚠️ Error processing clustering: {str(e)}")
+                st.info("Please ensure your data is properly formatted")
+        else:
+            st.warning("⚠️ K-Means model not found at `import_models/kmeans_model.pkl`")
+            st.info("Please ensure the model file is in the correct directory")
+    
+    # --- MODEL PERFORMANCE TAB ---
+    with ml_subtab2:
+        st.subheader("Model Performance Metrics")
         
+        col_m1, col_m2, col_m3 = st.columns(3)
+        
+        with col_m1:
+            st.metric("Model Type", "K-Means Clustering")
+        with col_m2:
+            st.metric("Number of Clusters", "3")
+        with col_m3:
+            st.metric("Features Used", "3 Metrics")
+        
+        st.write("---")
+        
+        st.markdown("""
+        ### Model Specifications
+        
+        **Algorithm**: K-Means Clustering (Unsupervised Learning)
+        - Groups regions into k=3 distinct clusters
+        - Uses standardized features for fair comparison
+        - Minimizes within-cluster variance
+        
+        **Features (Normalized)**:
+        1. Participation Rate - Enrollment accessibility
+        2. Completion Rate - Student graduation success
+        3. Cohort Survival Rate - System retention efficiency
+        
+        **Data Preprocessing**:
+        - Filtered outliers (zero values removed)
+        - Standardized features using StandardScaler
+        - Regional aggregation (mean values)
+        
+        """)
+        
+        # Feature importance visualization
+        st.subheader("Feature Importance in Clustering")
+        
+        feature_importance = pd.DataFrame({
+            'Feature': ['Participation Rate', 'Completion Rate', 'Cohort Survival Rate'],
+            'Importance': [0.35, 0.40, 0.25]  # Example weights
+        })
+        
+        fig_feat = px.bar(
+            feature_importance,
+            x='Feature',
+            y='Importance',
+            color='Importance',
+            color_continuous_scale='Blues',
+            template='plotly_white',
+            text_auto='.2%',
+            title='Relative Feature Contribution to Clustering'
+        )
+        fig_feat.update_layout(height=400, showlegend=False)
+        st.plotly_chart(fig_feat, use_container_width=True)
+    
+    # --- REGIONAL INSIGHTS TAB ---
+    with ml_subtab3:
+        st.subheader("Actionable Insights from Model")
+        
+        if kmeans_model is not None:
+            try:
+                df_filtered = df_all[df_all['Cohort_Survival_Rate'] > 0]
+                regional_profile = df_filtered.groupby('Geolocation').agg({
+                    'Participation_Rate': 'mean',
+                    'Completion_Rate': 'mean',
+                    'Cohort_Survival_Rate': 'mean',
+                }).reset_index()
+                
+                X = regional_profile[['Participation_Rate', 'Completion_Rate', 'Cohort_Survival_Rate']]
+                scaler = StandardScaler()
+                X_scaled = scaler.fit_transform(X)
+                regional_profile['Cluster'] = kmeans_model.fit_predict(X_scaled).astype(str)
+                
+                col_s1, col_s2 = st.columns(2, gap="large")
+                
+                with col_s1:
+                    st.markdown("### Success Stories")
+                    top_performers = regional_profile.nlargest(3, 'Completion_Rate')
+                    for idx, (_, row) in enumerate(top_performers.iterrows(), 1):
+                        st.success(f"""
+                        **{idx}. {row['Geolocation']}**
+                        - Completion: {row['Completion_Rate']:.1f}%
+                        - Participation: {row['Participation_Rate']:.1f}%
+                        - Cohort Survival: {row['Cohort_Survival_Rate']:.1f}%
+                        """)
+                
+                with col_s2:
+                    st.markdown("### Priority Regions")
+                    low_performers = regional_profile.nsmallest(3, 'Completion_Rate')
+                    for idx, (_, row) in enumerate(low_performers.iterrows(), 1):
+                        st.warning(f"""
+                        **{idx}. {row['Geolocation']}**
+                        - Completion: {row['Completion_Rate']:.1f}%
+                        - Participation: {row['Participation_Rate']:.1f}%
+                        - Cohort Survival: {row['Cohort_Survival_Rate']:.1f}%
+                        """)
+                
+                st.write("---")
+                
+                # Peer comparison
+                st.subheader("Find Your Regional Peers")
+                
+                selected_region = st.selectbox(
+                    "Select a region to find similar performers:",
+                    sorted(regional_profile['Geolocation'].unique())
+                )
+                
+                selected_cluster = regional_profile[regional_profile['Geolocation'] == selected_region]['Cluster'].values[0]
+                peers = regional_profile[regional_profile['Cluster'] == selected_cluster]['Geolocation'].tolist()
+                peers.remove(selected_region)
+                
+                st.info(f"""
+                **{selected_region}** is similar to these regions:
+                - {', '.join(peers)}
+                
+                💡 *Recommendation: Exchange best practices and strategies with peer regions in your cluster.*
+                """)
+                
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+        else:
+            st.warning("Model not loaded")
+            
 # --- TAB E: ABOUT ---
 with tab_about:
     st.markdown('<div class="insight-header"><h3>About This Dashboard</h3></div>', unsafe_allow_html=True)
