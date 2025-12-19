@@ -9,6 +9,8 @@ import folium
 from streamlit_folium import st_folium
 from folium import GeoJson, GeoJsonTooltip
 from datetime import datetime
+import joblib
+from sklearn.preprocessing import StandardScaler
 
 # --- PAGE CONFIG ---
 st.set_page_config(
@@ -157,7 +159,16 @@ def load_assets():
             geojson = json.load(f)
     return df, geojson
 
+# --- LOAD ML MODELS ---
+@st.cache_resource
+def load_kmeans_model():
+    model_path = 'import_models/kmeans_model.pkl'
+    if os.path.exists(model_path):
+        return joblib.load(model_path)
+    return None
+
 df_all, ph_geojson = load_assets()
+kmeans_model = load_kmeans_model()
 
 # --- HELPER FUNCTIONS ---
 def draw_enhanced_kpi(label, value, subtitle, color="#3b82f6"):
@@ -520,46 +531,77 @@ with tab_insights:
 # --- TAB D: ML MODELS ---
 with tab_ml:
     st.markdown('<div class="insight-header"><h3>Machine Learning & Predictive Analytics</h3></div>', unsafe_allow_html=True)
-    st.info("🚧 Advanced forecasting models under development. Integration with predictive engines in progress.")
     
-    col_ml1, col_ml2, col_ml3 = st.columns(3, gap="large")
-    
-    with col_ml1:
-        st.markdown("""
-        ### 📈 Time Series Forecasting
-        
-        **Models in Development:**
-        - Linear Regression (baseline)
-        - ARIMA (seasonal patterns)
-        - Prophet (trend + seasonality)
-        - LSTM (deep learning)
-        """)
-        st.image("https://cdn-icons-png.flaticon.com/512/2103/2103633.png", width=80)
-    
-    with col_ml2:
-        st.markdown("""
-        ### 🎯 Clustering & Segmentation
-        
-        **Analysis Methods:**
-        - K-Means clustering
-        - Hierarchical clustering
-        - Similarity scoring
-        - Performance grouping
-        """)
-        st.image("https://cdn-icons-png.flaticon.com/512/2103/2103533.png", width=80)
-    
-    with col_ml3:
-        st.markdown("""
-        ### 🔗 Causal Analysis
-        
-        **Techniques:**
-        - Vector Autoregression
-        - Granger Causality
-        - Cross-correlation
-        - Lead-lag analysis
-        """)
-        st.image("https://cdn-icons-png.flaticon.com/512/2103/2103460.png", width=80)
+    if kmeans_model is not None:
+        st.subheader("Regional Performance Clustering")
+        st.write("This model groups regions into 'Profiles' based on their average Participation, Completion, and Cohort Survival rates.")
 
+        # Preprocess: Replicating ModelHandler logic
+        # Filter out 0 values for accuracy
+        df_filtered = df_all[df_all['Cohort_Survival_Rate'] > 0]
+
+        # Group by Region to get the profile
+        regional_profile = df_filtered.groupby('Geolocation').agg({
+            'Participation_Rate': 'mean',
+            'Completion_Rate': 'mean',
+            'Cohort_Survival_Rate': 'mean',
+        }).reset_index()
+
+        # Scale Features
+        features = ['Participation_Rate', 'Completion_Rate', 'Cohort_Survival_Rate']
+        X = regional_profile[features]
+        
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+
+        # Apply Model
+        try:
+            regional_profile['clusters'] = kmeans_model.fit_predict(X_scaled)
+            regional_profile['clusters'] = regional_profile['clusters'].astype(str) # Convert to string for discrete color scaling
+
+            # Visualization
+            col_chart, col_list = st.columns([2, 1])
+            
+            with col_chart:
+                fig_clusters = px.scatter(
+                    regional_profile, 
+                    x="Participation_Rate", 
+                    y="Completion_Rate",
+                    color="clusters",
+                    size="Cohort_Survival_Rate",
+                    hover_name="Geolocation",
+                    template="plotly_white",
+                    title="Cluster Map: Participation vs Completion",
+                    labels={"clusters": "Cluster Group"},
+                    color_discrete_sequence=px.colors.qualitative.Safe
+                )
+                st.plotly_chart(fig_clusters, use_container_width=True)
+            
+            with col_list:
+                st.write("**Regions by Cluster**")
+                for cluster in sorted(regional_profile['clusters'].unique()):
+                    regions = regional_profile[regional_profile['clusters'] == cluster]['Geolocation'].tolist()
+                    st.info(f"**Cluster {cluster}**: {', '.join(regions)}")
+                    
+        except Exception as e:
+            st.error(f"Could not run clustering: {e}")
+    else:
+        st.warning("⚠️ `import_models/kmeans_model.pkl` not found. Please ensure the model file is in the correct directory.")
+
+    st.write("---")
+    st.subheader("Coming Soon")
+    st.info("Additional forecasting models and causal analysis (VAR) are currently under development.")
+    st.write("---")
+    
+    # Placeholders for other models
+    col_ml1, col_ml3 = st.columns(2)
+    with col_ml1:
+        st.subheader("Time Series Forecasting")
+        st.info("Forecasting models are currently under development.")
+    with col_ml3:
+        st.subheader("Causal Analysis")
+        st.info("Vector Autoregression analysis is currently under development.")
+        
 # --- TAB E: ABOUT ---
 with tab_about:
     st.markdown('<div class="insight-header"><h3>About This Dashboard</h3></div>', unsafe_allow_html=True)
