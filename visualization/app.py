@@ -565,13 +565,11 @@ with tab_ml:
             
             # Scale features
             features = ['Participation_Rate', 'Completion_Rate', 'Cohort_Survival_Rate']
-            X = regional_profile[features]
-            
-            scaler = StandardScaler()
-            X_scaled = scaler.fit_transform(X)
             
             try:
-                regional_profile['Cluster'] = kmeans_model.fit_predict(X_scaled).astype(str)
+                regional_profile['Cluster'] = kmeans_model.predict(
+                    kmeans_scaler.transform(regional_profile[features])
+                ).astype(str)
                 
                 # Define cluster profiles
                 cluster_names = {
@@ -581,9 +579,10 @@ with tab_ml:
                 }
                 
                 cluster_colors = {
-                    '0': '#10b981',  # Green
-                    '1': '#f59e0b',  # Amber
-                    '2': '#ef4444'   # Red
+                    '0': '#FFA500',  # Orange
+                    '1': '#ef4444',  # Red
+                    '3': '#10b981',  # Green
+                    '2': '#800080'   # Purple
                 }
                 
                 regional_profile['Cluster_Name'] = regional_profile['Cluster'].map(cluster_names)
@@ -611,9 +610,9 @@ with tab_ml:
                         },
                         template="plotly_white",
                         color_discrete_map={
-                            'High Performers': '#10b981',
-                            'Growing Regions': '#f59e0b',
-                            'Emerging Markets': '#ef4444'
+                            '🌟 High Performers': '#10b981',
+                            '📈 Growing Regions': '#f59e0b',
+                            '⚠️ Emerging Markets': '#ef4444'
                         },
                         size_max=50
                     )
@@ -659,7 +658,7 @@ with tab_ml:
                         'Emerging Markets': '#ef4444'
                     },
                     template="plotly_white",
-                    size_max=50
+                    size_max=30
                 )
                 fig_3d.update_layout(height=600)
                 st.plotly_chart(fig_3d, use_container_width=True)
@@ -811,11 +810,12 @@ with tab_ml:
                     'Cohort_Survival_Rate': 'mean',
                 }).reset_index()
                 
-                X = regional_profile[['Participation_Rate', 'Completion_Rate', 'Cohort_Survival_Rate']]
-                scaler = StandardScaler()
-                X_scaled = scaler.fit_transform(X)
-                regional_profile['Cluster'] = kmeans_model.fit_predict(X_scaled).astype(str)
+                features = ['Participation_Rate', 'Completion_Rate', 'Cohort_Survival_Rate']
+                regional_profile['Cluster'] = kmeans_model.predict(
+                    kmeans_scaler(regional_profile[features])).astype(str)
                 
+                print(regional_profile['Cluster'])
+
                 col_s1, col_s2 = st.columns(2, gap="large")
                 
                 with col_s1:

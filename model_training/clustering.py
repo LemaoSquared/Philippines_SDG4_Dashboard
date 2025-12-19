@@ -90,8 +90,6 @@ plt.show()
 # 5. Interpret the Clusters
 
 # You can also run this code dave if complex ang sa import model shinanneganz
-
-
 print("--- Cluster Averages ---")
 df = pd.read_csv('data_wrangling\\Cleaned_Philippines_Education_Statistics.csv')
 
@@ -111,8 +109,9 @@ features = ['Participation_Rate', 'Completion_Rate', 'Cohort_Survival_Rate']
 X = regional_profile[features]
 
 kmeans = KMeans(n_clusters=4, random_state=77, n_init=10, verbose=0)
-regional_profile['Cluster'] = kmeans.fit_predict(X_scaled)
+kmeans.fit(X_scaled)
 joblib.dump(kmeans, 'import_models//kmeans_model.pkl') # Saves the model
+regional_profile['Cluster'] = kmeans.predict(X_scaled)
 joblib.dump(scaler, 'import_models//scaler.pkl') # Saves the model
 # print(regional_profile.groupby('Cluster')[features].mean())
 
